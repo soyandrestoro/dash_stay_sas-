@@ -452,82 +452,84 @@ if len(filtrado) > 0:
     with c2:
         st.markdown("**Participación de Sede**")
         ranking = por_sede.sort_values('ahorro_neto', ascending=False)
-        sede_opts = ranking['cuenta'].astype(str).tolist()
+        sede_opts = [""] + ranking['cuenta'].astype(str).tolist()
         sede_sel = st.selectbox(
             "Selecciona una sede",
             sede_opts,
+            index=0,
             key="ranking_sede_widget",
         )
 
-        det = filtrado[filtrado['cuenta'].astype(str) == sede_sel]
-        niv_sede     = det['nivel'].iloc[0] if len(det) else '—'
-        s_consumo    = det['consumo'].sum()
-        s_ahorro     = det['ahorro_neto'].sum()
-        s_epm        = det['costo_epm'].sum()
-        s_bia        = det['costo_bia'].sum()
-        s_bia_rent   = s_bia + det['renting_mensual'].sum()
+        if not sede_sel:
+            st.info("Selecciona una sede para ver su participación en el resultado global.")
+        else:
+            det = filtrado[filtrado['cuenta'].astype(str) == sede_sel]
+            niv_sede   = det['nivel'].iloc[0] if len(det) else '—'
+            s_consumo  = det['consumo'].sum()
+            s_ahorro   = det['ahorro_neto'].sum()
+            s_epm      = det['costo_epm'].sum()
+            s_bia      = det['costo_bia'].sum()
+            s_bia_rent = s_bia + det['renting_mensual'].sum()
 
-        g_consumo    = filtrado['consumo'].sum()
-        g_ahorro     = filtrado['ahorro_neto'].sum()
-        g_epm        = filtrado['costo_epm'].sum()
-        g_bia_rent   = filtrado['costo_bia'].sum() + filtrado['renting_mensual'].sum()
+            g_consumo  = filtrado['consumo'].sum()
+            g_ahorro   = filtrado['ahorro_neto'].sum()
+            g_epm      = filtrado['costo_epm'].sum()
+            g_bia_rent = filtrado['costo_bia'].sum() + filtrado['renting_mensual'].sum()
 
-        def _pct(a, b): return round(a / b * 100, 1) if b else 0.0
+            def _pct(a, b): return round(a / b * 100, 1) if b else 0.0
 
-        p_consumo  = _pct(s_consumo, g_consumo)
-        p_ahorro   = _pct(s_ahorro,  g_ahorro)
-        p_epm      = _pct(s_epm,     g_epm)
-        p_bia_rent = _pct(s_bia_rent, g_bia_rent)
+            p_consumo  = _pct(s_consumo,  g_consumo)
+            p_ahorro   = _pct(s_ahorro,   g_ahorro)
+            p_epm      = _pct(s_epm,      g_epm)
+            p_bia_rent = _pct(s_bia_rent, g_bia_rent)
 
-        c_ahorro = '#2ECC71' if s_ahorro > 0 else '#8C9BB0'
-        st.markdown(
-            f"<span style='color:#8C9BB0;font-size:0.82em'>{niv_sede}</span>&nbsp;&nbsp;"
-            f"<span style='color:{c_ahorro};font-weight:600'>Ahorro neto: ${s_ahorro:,.0f}</span>",
-            unsafe_allow_html=True,
-        )
-        st.markdown("")
+            c_ahorro = '#2ECC71' if s_ahorro > 0 else '#8C9BB0'
+            st.markdown(
+                f"<span style='color:#8C9BB0;font-size:0.82em'>{niv_sede}</span>&nbsp;&nbsp;"
+                f"<span style='color:{c_ahorro};font-weight:600'>Ahorro neto: ${s_ahorro:,.0f}</span>",
+                unsafe_allow_html=True,
+            )
+            st.markdown("")
 
-        # ── Tarjetas 2×2 ──
-        ma, mb = st.columns(2)
-        ma.metric("⚡ Consumo",    f"{p_consumo:.1f}%",  f"{s_consumo:,.0f} kWh",  delta_color="off")
-        mb.metric("💰 Ahorro Neto", f"{p_ahorro:.1f}%",  f"${s_ahorro:,.0f}",       delta_color="off")
-        mc, md = st.columns(2)
-        mc.metric("🔴 Costo EPM",  f"{p_epm:.1f}%",      f"${s_epm:,.0f}",          delta_color="off")
-        md.metric("🟢 BIA+Renting", f"{p_bia_rent:.1f}%", f"${s_bia_rent:,.0f}",    delta_color="off")
+            ma, mb = st.columns(2)
+            ma.metric("⚡ Consumo",     f"{p_consumo:.1f}%",  f"{s_consumo:,.0f} kWh", delta_color="off")
+            mb.metric("💰 Ahorro Neto", f"{p_ahorro:.1f}%",   f"${s_ahorro:,.0f}",      delta_color="off")
+            mc, md = st.columns(2)
+            mc.metric("🔴 Costo EPM",   f"{p_epm:.1f}%",      f"${s_epm:,.0f}",         delta_color="off")
+            md.metric("🟢 BIA+Renting", f"{p_bia_rent:.1f}%", f"${s_bia_rent:,.0f}",    delta_color="off")
 
-        st.markdown("")
+            st.markdown("")
 
-        # ── Barras de participación ──
-        labels  = ['Consumo', 'Ahorro Neto', 'Costo EPM', 'BIA+Renting']
-        vals    = [p_consumo, p_ahorro, p_epm, p_bia_rent]
-        colors  = ['#09B4CC', c_ahorro, '#FFB627', '#7555F3']
+            labels = ['Consumo', 'Ahorro Neto', 'Costo EPM', 'BIA+Renting']
+            vals   = [p_consumo, p_ahorro, p_epm, p_bia_rent]
+            colors = ['#09B4CC', c_ahorro, '#FFB627', '#7555F3']
 
-        fig_p = go.Figure()
-        fig_p.add_trace(go.Bar(
-            x=[100] * 4, y=labels, orientation='h',
-            marker_color='rgba(140,155,176,0.1)',
-            showlegend=False, hoverinfo='skip',
-        ))
-        fig_p.add_trace(go.Bar(
-            x=vals, y=labels, orientation='h',
-            marker_color=colors,
-            text=[f"{v:.1f}%" for v in vals],
-            textposition='inside',
-            textfont=dict(size=12, color='#FFFFFF'),
-            showlegend=False,
-            hovertemplate='%{y}: %{x:.1f}% del total<extra></extra>',
-        ))
-        fig_p.update_layout(
-            barmode='overlay',
-            template='plotly_dark',
-            height=240,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            xaxis=dict(range=[0, 100], showgrid=False, showticklabels=False, zeroline=False),
-            yaxis=dict(showgrid=False, tickfont=dict(size=11)),
-            margin=dict(t=0, b=10, l=100, r=20),
-        )
-        st.plotly_chart(fig_p, use_container_width=True)
+            fig_p = go.Figure()
+            fig_p.add_trace(go.Bar(
+                x=[100] * 4, y=labels, orientation='h',
+                marker_color='rgba(140,155,176,0.1)',
+                showlegend=False, hoverinfo='skip',
+            ))
+            fig_p.add_trace(go.Bar(
+                x=vals, y=labels, orientation='h',
+                marker_color=colors,
+                text=[f"{v:.1f}%" for v in vals],
+                textposition='inside',
+                textfont=dict(size=12, color='#FFFFFF'),
+                showlegend=False,
+                hovertemplate='%{y}: %{x:.1f}% del total<extra></extra>',
+            ))
+            fig_p.update_layout(
+                barmode='overlay',
+                template='plotly_dark',
+                height=240,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(range=[0, 100], showgrid=False, showticklabels=False, zeroline=False),
+                yaxis=dict(showgrid=False, tickfont=dict(size=11)),
+                margin=dict(t=0, b=10, l=100, r=20),
+            )
+            st.plotly_chart(fig_p, use_container_width=True)
 
     c1, c2 = st.columns(2)
 
