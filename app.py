@@ -596,9 +596,44 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
 
     st.markdown("---")
     st.markdown("### Detalle de Datos")
+
+    # Calcular columnas derivadas sobre filtrado completo para el resumen
+    tot_eq         = filtrado['costo_equipos'].sum()
+    tot_comercial  = tot_eq * FACTOR_COMERCIAL
+    tot_rent_ref   = filtrado['renting_mensual'].sum() * FACTOR_COMERCIAL
+    tot_rent_cli   = filtrado['renting_mensual'].sum()
+    tot_bia_fin    = tot_rent_ref - tot_rent_cli
+
+    # ── Cuadro resumen de equipos ──
+    st.markdown("#### Resumen de Equipos y Financiamiento BIA")
+    ra, rb, rc, rd = st.columns(4)
+    ra.metric(
+        "Valor Comercial Total",
+        f"${tot_comercial:,.0f}",
+        help="Valor de referencia total de los equipos presentado al cliente",
+    )
+    rb.metric(
+        "Renting de Referencia",
+        f"${tot_rent_ref:,.0f}",
+        help="Renting mensual total calculado sobre el valor comercial",
+    )
+    rc.metric(
+        "Renting que Paga el Cliente",
+        f"${tot_rent_cli:,.0f}",
+        help="Renting mensual real a cargo del cliente",
+    )
+    rd.metric(
+        "BIA Financia",
+        f"${tot_bia_fin:,.0f}",
+        delta=f"{(tot_bia_fin/tot_rent_ref*100):.1f}% del renting de referencia" if tot_rent_ref else "—",
+        delta_color="normal",
+        help="Aporte mensual de BIA al financiamiento de los equipos del cliente",
+    )
+
+    st.markdown("")
     st.caption(
-        "💡 **Valor comercial** = valor de referencia de los equipos presentado al cliente. "
-        "**BIA financia** = aporte de BIA al renting mensual del cliente."
+        "💡 **Valor Comercial** = valor de referencia de los equipos presentado al cliente. "
+        "**BIA Financia** = diferencia entre el renting de referencia y lo que el cliente paga efectivamente."
     )
 
     tabla = filtrado[[
@@ -608,8 +643,8 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
     ]].copy()
 
     tabla['valor_comercial']  = tabla['costo_equipos'] * FACTOR_COMERCIAL
-    tabla['renting_cliente']  = tabla['renting_mensual'] * FACTOR_COMERCIAL
-    tabla['bia_financia']     = tabla['renting_cliente'] - tabla['renting_mensual']
+    tabla['renting_ref']      = tabla['renting_mensual'] * FACTOR_COMERCIAL
+    tabla['bia_financia']     = tabla['renting_ref'] - tabla['renting_mensual']
 
     tabla.columns = [
         'Cuenta', 'Dirección', 'Nivel', 'Mes', 'Consumo (kWh)',
@@ -618,11 +653,19 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
         'Valor Comercial ($)', 'Renting de Referencia ($)', 'BIA Financia ($)',
     ]
 
+    # Escenario comercial primero, luego lo que paga el cliente
+    tabla = tabla[[
+        'Cuenta', 'Dirección', 'Nivel', 'Mes', 'Consumo (kWh)',
+        'Tarifa EPM ($/kWh)', 'Tarifa BIA ($/kWh)', 'Ahorro en Tarifa ($)',
+        'Valor Comercial ($)', 'Renting de Referencia ($)',
+        'Valor Equipos ($)', 'Renting Cliente ($)', 'BIA Financia ($)',
+    ]]
+
     tabla['Consumo (kWh)']       = tabla['Consumo (kWh)'].apply(lambda x: f"{x:,.0f}")
     tabla['Tarifa EPM ($/kWh)']  = tabla['Tarifa EPM ($/kWh)'].apply(lambda x: f"${x:.4f}")
     tabla['Tarifa BIA ($/kWh)']  = tabla['Tarifa BIA ($/kWh)'].apply(lambda x: f"${x:.4f}")
-    for col in ['Ahorro en Tarifa ($)', 'Valor Equipos ($)', 'Renting Cliente ($)',
-                'Valor Comercial ($)', 'Renting de Referencia ($)', 'BIA Financia ($)']:
+    for col in ['Ahorro en Tarifa ($)', 'Valor Comercial ($)', 'Renting de Referencia ($)',
+                'Valor Equipos ($)', 'Renting Cliente ($)', 'BIA Financia ($)']:
         tabla[col] = tabla[col].apply(lambda x: f"${x:,.0f}")
 
     st.dataframe(tabla, use_container_width=True, hide_index=True)
