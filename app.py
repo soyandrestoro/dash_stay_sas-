@@ -144,8 +144,21 @@ df = cargar_datos(mtimes_csv())
 
 # ── Encabezado ────────────────────────────────────────────────────────────────
 
-st.title("⚡ Dashboard Energético")
-st.markdown("**Análisis de Consumo, Ahorro y Costos** | EPM vs BIA | Oct 2025 – Abr 2026")
+st.markdown("""
+<style>
+div[data-testid="stImage"] img { border-radius: 6px; }
+</style>
+""", unsafe_allow_html=True)
+
+col_logo, col_title = st.columns([1, 6])
+with col_logo:
+    st.image("Bia-energy-1-1024x597.webp", width=150)
+with col_title:
+    st.markdown(
+        "<h1 style='margin-top:6px;margin-bottom:2px;padding-bottom:0'>Dashboard Energético</h1>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("<span style='color:#8C9BB0'>Stay SAS &nbsp;·&nbsp; EPM vs BIA &nbsp;·&nbsp; Oct 2025 – Abr 2026</span>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ── Búsqueda y filtros ────────────────────────────────────────────────────────
