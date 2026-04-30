@@ -150,19 +150,33 @@ st.markdown("---")
 
 # ── Búsqueda y filtros ────────────────────────────────────────────────────────
 
-busqueda = st.text_input("🔍 Buscar por número de cuenta o dirección", placeholder="Ej: 12975372")
-
-st.markdown("### Filtros")
-
 # Inicializar estado de seguimiento de nivel
 if 'ultimo_nivel' not in st.session_state:
     st.session_state.ultimo_nivel = ""
+
+def reiniciar_filtros():
+    for key in ('busqueda_widget', 'nivel_widget', 'sede_widget', 'mes_widget'):
+        if key in st.session_state:
+            del st.session_state[key]
+    st.session_state.ultimo_nivel = ""
+
+col_titulo, col_btn = st.columns([6, 1])
+with col_titulo:
+    st.markdown("### Filtros")
+with col_btn:
+    st.markdown("<div style='padding-top:28px'>", unsafe_allow_html=True)
+    st.button("✕ Limpiar", on_click=reiniciar_filtros, use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+busqueda = st.text_input("🔍 Buscar por número de cuenta o dirección",
+                         placeholder="Ej: 12975372", key="busqueda_widget")
 
 c1, c2, c3 = st.columns(3)
 
 with c1:
     nivel = st.selectbox("Nivel de Tensión",
-                         [""] + sorted(df['nivel'].unique().tolist()), index=0)
+                         [""] + sorted(df['nivel'].unique().tolist()),
+                         index=0, key="nivel_widget")
 
 # Si el nivel cambió, borrar el widget de sede para que vuelva a índice 0
 if nivel != st.session_state.ultimo_nivel:
@@ -178,7 +192,8 @@ with c2:
     sede = st.selectbox("Sede / Cuenta", cuentas_disp, index=0, key="sede_widget")
 
 with c3:
-    mes = st.selectbox("Mes", [""] + sorted(df['mes'].unique().tolist()), index=0)
+    mes = st.selectbox("Mes", [""] + sorted(df['mes'].unique().tolist()),
+                       index=0, key="mes_widget")
 
 # Aplicar filtros
 filtrado = df.copy()
