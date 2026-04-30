@@ -489,7 +489,18 @@ if len(filtrado) > 0:
                 f"<span style='color:{c_ahorro};font-weight:600'>Ahorro neto: ${s_ahorro:,.0f}</span>",
                 unsafe_allow_html=True,
             )
-            st.markdown("")
+
+            st.markdown("""
+<div style='background:#101525;border-left:3px solid #7555F3;padding:10px 14px;border-radius:4px;margin:10px 0;font-size:0.82em;color:#8C9BB0;line-height:1.6'>
+<b style='color:#FFFFFF'>¿Cómo leer este panel?</b><br>
+Cada tarjeta muestra el <b style='color:#FFFFFF'>peso porcentual</b> de esta sede dentro del total filtrado, y el valor absoluto debajo.<br><br>
+⚡ <b style='color:#09B4CC'>Consumo</b> — fracción de la energía total consumida por esta sede.<br>
+💰 <b style='color:#2ECC71'>Ahorro Neto</b> — porción del ahorro (o pérdida) que aporta esta sede.<br>
+🔴 <b style='color:#FFB627'>Costo EPM</b> — cuánto representa esta sede del costo total si se pagara con EPM.<br>
+🟢 <b style='color:#7555F3'>BIA + Renting</b> — su peso en el costo real con BIA incluyendo el renting mensual.<br><br>
+Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del total.
+</div>
+""", unsafe_allow_html=True)
 
             ma, mb = st.columns(2)
             ma.metric("⚡ Consumo",     f"{p_consumo:.1f}%",  f"{s_consumo:,.0f} kWh", delta_color="off")
