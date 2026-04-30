@@ -614,19 +614,16 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
     por_pagar_ref  = valor_eq_com  - pagado_ref
 
     st.markdown("---")
-    col_tit, col_filt = st.columns([3, 2])
-    with col_tit:
-        st.markdown("### Detalle de Datos")
-    with col_filt:
-        cuentas_tabla_opts = sorted(filtrado['cuenta'].astype(str).unique().tolist())
-        cuentas_tabla_sel  = st.multiselect(
-            "Filtrar por cuenta",
-            options=cuentas_tabla_opts,
-            default=[],
-            placeholder="Todas las cuentas",
-            key="detalle_cuentas_widget",
-            label_visibility="collapsed",
-        )
+    st.markdown("### Detalle de Datos")
+    cuentas_tabla_opts = sorted(filtrado['cuenta'].astype(str).unique().tolist())
+    st.multiselect(
+        "Filtrar tabla por cuenta",
+        options=cuentas_tabla_opts,
+        default=[],
+        placeholder="Todas las cuentas — selecciona para filtrar",
+        key="detalle_cuentas_widget",
+    )
+    cuentas_tabla_sel = st.session_state.get("detalle_cuentas_widget", [])
 
     # ── Banner BIA ──────────────────────────────────────────────────────────
     st.markdown(f"""
