@@ -597,12 +597,16 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
     st.markdown("---")
     st.markdown("### Detalle de Datos")
 
-    # Calcular columnas derivadas sobre filtrado completo para el resumen
-    tot_eq         = filtrado['costo_equipos'].sum()
-    tot_comercial  = tot_eq * FACTOR_COMERCIAL
-    tot_rent_ref   = filtrado['renting_mensual'].sum() * FACTOR_COMERCIAL
-    tot_rent_cli   = filtrado['renting_mensual'].sum()
-    tot_bia_fin    = tot_rent_ref - tot_rent_cli
+    # Una fila por sede (costo_equipos y renting son fijos, no mensuales)
+    por_sede_eq   = filtrado.groupby('cuenta', as_index=False).agg(
+        costo_equipos=('costo_equipos', 'first'),
+        renting_mensual=('renting_mensual', 'first'),
+    )
+    tot_eq        = por_sede_eq['costo_equipos'].sum()
+    tot_comercial = tot_eq * FACTOR_COMERCIAL
+    tot_rent_cli  = por_sede_eq['renting_mensual'].sum()
+    tot_rent_ref  = tot_rent_cli * FACTOR_COMERCIAL
+    tot_bia_fin   = tot_rent_ref - tot_rent_cli
 
     # ── Cuadro resumen de equipos ──
     st.markdown("#### Resumen de Equipos y Financiamiento BIA")
