@@ -291,41 +291,65 @@ if len(filtrado) > 0:
     )
 
     COLORES_EPM = {
-        'Nivel 1 - Operador': '#ef4444',
-        'Nivel 1 - Usuario':  '#f97316',
-        'Nivel 2 - Usuario':  '#f59e0b',
+        'Nivel 1 - Operador': '#f87171',
+        'Nivel 1 - Usuario':  '#fb923c',
+        'Nivel 2 - Usuario':  '#fcd34d',
     }
     COLORES_BIA = {
-        'Nivel 1 - Operador': '#3b82f6',
-        'Nivel 1 - Usuario':  '#10b981',
-        'Nivel 2 - Usuario':  '#a855f7',
+        'Nivel 1 - Operador': '#93c5fd',
+        'Nivel 1 - Usuario':  '#6ee7b7',
+        'Nivel 2 - Usuario':  '#d8b4fe',
     }
 
     fig_tarifas = go.Figure()
     for niv in sorted(tarifas_mes['nivel'].unique()):
         sub = tarifas_mes[tarifas_mes['nivel'] == niv]
+        c_epm = COLORES_EPM.get(niv, '#f87171')
+        c_bia = COLORES_BIA.get(niv, '#6ee7b7')
         fig_tarifas.add_trace(go.Scatter(
             x=sub['mes'], y=sub['tarifa_epm'],
             mode='lines+markers',
-            name=f'EPM – {niv}',
-            line=dict(color=COLORES_EPM.get(niv, '#ef4444'), width=2, dash='solid'),
-            marker=dict(size=8),
+            name=f'EPM · {niv}',
+            line=dict(color=c_epm, width=1.5, shape='spline'),
+            marker=dict(size=5, symbol='circle', color=c_epm,
+                        line=dict(width=0)),
+            hovertemplate='$%{y:.4f}/kWh<extra>EPM · ' + niv + '</extra>',
         ))
         fig_tarifas.add_trace(go.Scatter(
             x=sub['mes'], y=sub['tarifa_bia'],
             mode='lines+markers',
-            name=f'BIA – {niv}',
-            line=dict(color=COLORES_BIA.get(niv, '#10b981'), width=2, dash='dot'),
-            marker=dict(size=8, symbol='diamond'),
+            name=f'BIA · {niv}',
+            line=dict(color=c_bia, width=1.5, dash='dot', shape='spline'),
+            marker=dict(size=5, symbol='diamond', color=c_bia,
+                        line=dict(width=0)),
+            hovertemplate='$%{y:.4f}/kWh<extra>BIA · ' + niv + '</extra>',
         ))
 
     fig_tarifas.update_layout(
-        xaxis_title="Mes",
-        yaxis_title="Tarifa ($/kWh)",
         hovermode='x unified',
         template='plotly_dark',
-        height=420,
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
+        height=360,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        legend=dict(
+            orientation='h', yanchor='bottom', y=1.05,
+            xanchor='left', x=0,
+            font=dict(size=11),
+            bgcolor='rgba(0,0,0,0)', borderwidth=0,
+        ),
+        xaxis=dict(
+            title='', tickfont=dict(size=11),
+            showgrid=True, gridcolor='rgba(71,85,105,0.25)', gridwidth=1,
+            zeroline=False, showline=False,
+        ),
+        yaxis=dict(
+            title='$/kWh', tickfont=dict(size=11), tickformat='$.3f',
+            showgrid=True, gridcolor='rgba(71,85,105,0.25)', gridwidth=1,
+            zeroline=False, showline=False,
+        ),
+        margin=dict(t=10, b=40, l=60, r=20),
+        hoverlabel=dict(bgcolor='#1e293b', bordercolor='#334155',
+                        font=dict(size=12)),
     )
     st.plotly_chart(fig_tarifas, use_container_width=True)
 
