@@ -535,13 +535,34 @@ if len(filtrado) > 0:
 
     with c1:
         fig = go.Figure([
-            go.Bar(x=por_mes['mes'], y=por_mes['costo_epm'], name='Costo EPM', marker_color='#FFB627'),
-            go.Bar(x=por_mes['mes'], y=por_mes['costo_bia'], name='Costo BIA', marker_color='#2ECC71'),
+            go.Bar(
+                x=por_mes['mes'], y=por_mes['costo_epm'],
+                name='EPM', marker_color='#7555F3',
+                text=[f"${v:,.0f}" for v in por_mes['costo_epm']],
+                textposition='outside', textfont=dict(size=10, color='#8C9BB0'),
+                hovertemplate='EPM %{x}: $%{y:,.0f}<extra></extra>',
+            ),
+            go.Bar(
+                x=por_mes['mes'], y=por_mes['costo_bia'],
+                name='BIA', marker_color='#09B4CC',
+                text=[f"${v:,.0f}" for v in por_mes['costo_bia']],
+                textposition='outside', textfont=dict(size=10, color='#8C9BB0'),
+                hovertemplate='BIA %{x}: $%{y:,.0f}<extra></extra>',
+            ),
         ])
-        fig.update_layout(title="Costo Comparativo (EPM vs BIA)",
-                          xaxis_title="Mes", yaxis_title="Costo ($)",
-                          barmode='group', hovermode='x unified',
-                          template='plotly_dark', height=400)
+        fig.update_layout(
+            title="Costo Comparativo (EPM vs BIA)",
+            xaxis_title="", yaxis_title="$",
+            barmode='group', hovermode='x unified',
+            template='plotly_dark', height=420,
+            plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0,
+                        bgcolor='rgba(0,0,0,0)', borderwidth=0),
+            yaxis=dict(showgrid=True, gridcolor='rgba(140,155,176,0.12)', zeroline=False),
+            xaxis=dict(showgrid=False),
+            margin=dict(t=50, b=40, l=60, r=20),
+            uniformtext=dict(mode='hide', minsize=9),
+        )
         st.plotly_chart(fig, use_container_width=True)
 
     with c2:
