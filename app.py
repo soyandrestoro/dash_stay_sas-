@@ -623,43 +623,53 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
 """, unsafe_allow_html=True)
 
     # ── Comparativo lado a lado ─────────────────────────────────────────────
-    st.markdown("#### Equipos — Escenario de Referencia vs Con BIA")
-    col_ref, col_bia = st.columns(2)
+    st.markdown("#### Financiamiento de Equipos")
 
-    with col_ref:
+    def _header(texto, color):
         st.markdown(
-            "<div style='text-align:center;color:#FFB627;font-weight:600;"
-            "font-size:1em;margin-bottom:8px'>📋 Escenario de Referencia</div>",
+            f"<div style='text-align:center;color:{color};font-weight:700;"
+            f"font-size:1em;padding:6px 0 10px 0;border-bottom:2px solid {color};"
+            f"margin-bottom:12px'>{texto}</div>",
             unsafe_allow_html=True,
         )
+
+    def _ahorro_card(label, valor):
+        st.markdown(
+            f"<div style='background:#0d2218;border:1px solid #2ECC71;border-radius:6px;"
+            f"padding:10px 14px;margin-bottom:10px'>"
+            f"<div style='color:#8C9BB0;font-size:0.78em'>{label}</div>"
+            f"<div style='color:#2ECC71;font-size:1.25em;font-weight:700'>${valor:,.0f}</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+    col_sin, col_con, col_ahorro = st.columns(3)
+
+    with col_sin:
+        _header("Sin BIA", "#8C9BB0")
         st.metric("Valor total equipos",       f"${VALOR_COMERCIAL_T:,.0f}")
         st.metric("Renting mensual",           f"${rent_ref_men:,.0f}")
         st.metric(f"Pagado ({N_MESES} meses)", f"${pagado_ref:,.0f}")
         st.metric("Por pagar",                 f"${por_pagar_ref:,.0f}")
 
-    with col_bia:
-        st.markdown(
-            "<div style='text-align:center;color:#2ECC71;font-weight:600;"
-            "font-size:1em;margin-bottom:8px'>✅ Con BIA</div>",
-            unsafe_allow_html=True,
-        )
-        st.metric("Valor total equipos",       f"${VALOR_EQUIPOS_REAL:,.0f}",
-                  delta=f"-${VALOR_COMERCIAL_T - VALOR_EQUIPOS_REAL:,.0f} vs referencia",
-                  delta_color="normal")
-        st.metric("Renting mensual",           f"${rent_real_men:,.0f}",
-                  delta=f"-${bia_men:,.0f}/mes financia BIA",
-                  delta_color="normal")
-        st.metric(f"Pagado ({N_MESES} meses)", f"${pagado_real:,.0f}",
-                  delta=f"-${bia_aportado:,.0f} aportados por BIA",
-                  delta_color="normal")
-        st.metric("Por pagar",                 f"${por_pagar_real:,.0f}",
-                  delta=f"-${por_pagar_ref - por_pagar_real:,.0f} vs referencia",
-                  delta_color="normal")
+    with col_con:
+        _header("✅ Con BIA", "#09B4CC")
+        st.metric("Valor total equipos",       f"${VALOR_EQUIPOS_REAL:,.0f}")
+        st.metric("Renting mensual",           f"${rent_real_men:,.0f}")
+        st.metric(f"Pagado ({N_MESES} meses)", f"${pagado_real:,.0f}")
+        st.metric("Por pagar",                 f"${por_pagar_real:,.0f}")
+
+    with col_ahorro:
+        _header("💚 El Cliente Ahorra", "#2ECC71")
+        _ahorro_card("En valor de equipos",          VALOR_COMERCIAL_T - VALOR_EQUIPOS_REAL)
+        _ahorro_card("En renting mensual",           bia_men)
+        _ahorro_card(f"En los {N_MESES} meses",      bia_aportado)
+        _ahorro_card("En saldo por pagar",           por_pagar_ref - por_pagar_real)
 
     st.markdown("")
     st.caption(
-        "💡 **Escenario de referencia**: valor comercial de los equipos y su renting asociado. "
-        f"**Con BIA**: valor real (${VALOR_EQUIPOS_REAL:,.0f}) y renting que paga efectivamente el cliente — la diferencia la financia BIA."
+        f"💡 **Sin BIA**: valor de mercado de los equipos y su renting asociado. "
+        f"**Con BIA**: el cliente paga ${VALOR_EQUIPOS_REAL:,.0f} en equipos y un renting mensual menor — BIA financia la diferencia."
     )
 
     tabla = filtrado[[
