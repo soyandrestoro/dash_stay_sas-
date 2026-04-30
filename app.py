@@ -328,29 +328,86 @@ if len(filtrado) > 0:
         .sort_values('mes')
     )
 
+    # ── 1. Waterfall mensual ──────────────────────────────────────────────────
+    meses_wf  = list(por_mes['mes']) + ['Total']
+    valores_wf = list(por_mes['ahorro_neto'])
+    medidas_wf = ['relative'] * len(por_mes) + ['total']
+    textos_wf  = [f"${v:,.0f}" for v in por_mes['ahorro_neto']] + [f"${sum(por_mes['ahorro_neto']):,.0f}"]
+
+    fig_wf = go.Figure(go.Waterfall(
+        orientation='v',
+        measure=medidas_wf,
+        x=meses_wf,
+        y=valores_wf + [0],
+        text=textos_wf,
+        textposition='outside',
+        textfont=dict(size=11),
+        connector=dict(line=dict(color='#475569', width=1)),
+        increasing=dict(marker=dict(color='#10b981')),
+        decreasing=dict(marker=dict(color='#94a3b8')),
+        totals=dict(marker=dict(color='#3b82f6')),
+    ))
+    fig_wf.update_layout(
+        title='Flujo de Ahorro Neto Mensual (Ahorro tarifa − Renting)',
+        xaxis_title='Mes', yaxis_title='Monto ($)',
+        template='plotly_dark', height=420,
+        showlegend=False,
+    )
+    st.plotly_chart(fig_wf, use_container_width=True)
+
+    # ── 2. Scatter Consumo vs Ahorro por sede  +  3. Ranking de sedes ────────
+    por_sede = (
+        filtrado
+        .groupby('cuenta', as_index=False)
+        .agg(
+            consumo    =('consumo',    'sum'),
+            ahorro_neto=('ahorro_neto','sum'),
+            nivel      =('nivel',      'first'),
+        )
+    )
+
     c1, c2 = st.columns(2)
 
     with c1:
-        fig = go.Figure([
-            go.Bar(x=por_mes['mes'], y=por_mes['ahorro_bruto'],    name='Ahorro Bruto', marker_color='#10b981'),
-            go.Bar(x=por_mes['mes'], y=por_mes['renting_mensual'], name='Renting',       marker_color='#3b82f6'),
-        ])
-        fig.update_layout(title="Ahorro Bruto vs Renting Mensual",
-                          xaxis_title="Mes", yaxis_title="Monto ($)",
-                          barmode='group', hovermode='x unified',
-                          template='plotly_dark', height=400)
-        st.plotly_chart(fig, use_container_width=True)
+        colores_scatter = ['#10b981' if v > 0 else '#94a3b8' for v in por_sede['ahorro_neto']]
+        fig_sc = go.Figure(go.Scatter(
+            x=por_sede['consumo'],
+            y=por_sede['ahorro_neto'],
+            mode='markers',
+            marker=dict(size=10, color=colores_scatter, line=dict(width=1, color='#1e293b')),
+            text=por_sede['cuenta'].astype(str) + '<br>' + por_sede['nivel'],
+            hovertemplate='<b>%{text}</b><br>Consumo: %{x:,.0f} kWh<br>Ahorro neto: $%{y:,.0f}<extra></extra>',
+        ))
+        fig_sc.add_hline(y=0, line=dict(color='#475569', dash='dash', width=1))
+        fig_sc.update_layout(
+            title='Consumo vs Ahorro Neto por Sede',
+            xaxis_title='Consumo total (kWh)',
+            yaxis_title='Ahorro neto ($)',
+            template='plotly_dark', height=420,
+        )
+        st.plotly_chart(fig_sc, use_container_width=True)
 
     with c2:
-        colores = ['#10b981' if v > 0 else '#ef4444' for v in por_mes['ahorro_neto']]
-        fig = go.Figure([
-            go.Bar(x=por_mes['mes'], y=por_mes['ahorro_neto'], marker_color=colores, name='Diferencia')
-        ])
-        fig.update_layout(title="Diferencia Mensual (Ahorro - Renting)",
-                          xaxis_title="Mes", yaxis_title="Monto ($)",
-                          hovermode='x', template='plotly_dark',
-                          showlegend=False, height=400)
-        st.plotly_chart(fig, use_container_width=True)
+        ranking = por_sede.sort_values('ahorro_neto', ascending=True)
+        col_rank = ['#10b981' if v > 0 else '#94a3b8' for v in ranking['ahorro_neto']]
+        fig_rk = go.Figure(go.Bar(
+            x=ranking['ahorro_neto'],
+            y=ranking['cuenta'].astype(str),
+            orientation='h',
+            marker_color=col_rank,
+            text=[f"${v:,.0f}" for v in ranking['ahorro_neto']],
+            textposition='outside',
+            textfont=dict(size=10),
+        ))
+        fig_rk.update_layout(
+            title='Ranking de Sedes por Ahorro Neto',
+            xaxis_title='Ahorro neto ($)',
+            yaxis_title='',
+            template='plotly_dark',
+            height=max(420, len(ranking) * 22 + 80),
+            margin=dict(l=120),
+        )
+        st.plotly_chart(fig_rk, use_container_width=True)
 
     c1, c2 = st.columns(2)
 
