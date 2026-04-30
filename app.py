@@ -627,18 +627,17 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
 
     def _header(texto, color):
         st.markdown(
-            f"<div style='text-align:center;color:{color};font-weight:700;"
-            f"font-size:1em;padding:6px 0 10px 0;border-bottom:2px solid {color};"
-            f"margin-bottom:12px'>{texto}</div>",
+            f"<div style='color:{color};font-weight:600;font-size:0.9em;"
+            f"padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid rgba(140,155,176,0.2)'>"
+            f"{texto}</div>",
             unsafe_allow_html=True,
         )
 
     def _ahorro_card(label, valor):
         st.markdown(
-            f"<div style='background:#0d2218;border:1px solid #2ECC71;border-radius:6px;"
-            f"padding:10px 14px;margin-bottom:10px'>"
+            f"<div style='padding:8px 0 8px 0;border-bottom:1px solid rgba(140,155,176,0.1)'>"
             f"<div style='color:#8C9BB0;font-size:0.78em'>{label}</div>"
-            f"<div style='color:#2ECC71;font-size:1.25em;font-weight:700'>${valor:,.0f}</div>"
+            f"<div style='color:#2ECC71;font-size:1.15em;font-weight:600'>${valor:,.0f}</div>"
             f"</div>",
             unsafe_allow_html=True,
         )
@@ -646,30 +645,30 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
     col_sin, col_con, col_ahorro = st.columns(3)
 
     with col_sin:
-        _header("Sin BIA", "#8C9BB0")
-        st.metric("Valor total equipos",       f"${VALOR_COMERCIAL_T:,.0f}")
+        _header("Valor total equipos", "#8C9BB0")
+        st.metric("Valor equipos",             f"${VALOR_COMERCIAL_T:,.0f}")
         st.metric("Renting mensual",           f"${rent_ref_men:,.0f}")
         st.metric(f"Pagado ({N_MESES} meses)", f"${pagado_ref:,.0f}")
         st.metric("Por pagar",                 f"${por_pagar_ref:,.0f}")
 
     with col_con:
-        _header("✅ Con BIA", "#09B4CC")
-        st.metric("Valor total equipos",       f"${VALOR_EQUIPOS_REAL:,.0f}")
+        _header("Con BIA", "#09B4CC")
+        st.metric("Valor equipos",             f"${VALOR_EQUIPOS_REAL:,.0f}")
         st.metric("Renting mensual",           f"${rent_real_men:,.0f}")
         st.metric(f"Pagado ({N_MESES} meses)", f"${pagado_real:,.0f}")
         st.metric("Por pagar",                 f"${por_pagar_real:,.0f}")
 
     with col_ahorro:
-        _header("💚 El Cliente Ahorra", "#2ECC71")
-        _ahorro_card("En valor de equipos",          VALOR_COMERCIAL_T - VALOR_EQUIPOS_REAL)
-        _ahorro_card("En renting mensual",           bia_men)
-        _ahorro_card(f"En los {N_MESES} meses",      bia_aportado)
-        _ahorro_card("En saldo por pagar",           por_pagar_ref - por_pagar_real)
+        _header("El cliente ahorra", "#2ECC71")
+        _ahorro_card("En valor de equipos",     VALOR_COMERCIAL_T - VALOR_EQUIPOS_REAL)
+        _ahorro_card("En renting mensual",      bia_men)
+        _ahorro_card(f"En {N_MESES} meses",     bia_aportado)
+        _ahorro_card("En saldo por pagar",      por_pagar_ref - por_pagar_real)
 
     st.markdown("")
     st.caption(
-        f"💡 **Sin BIA**: valor de mercado de los equipos y su renting asociado. "
-        f"**Con BIA**: el cliente paga ${VALOR_EQUIPOS_REAL:,.0f} en equipos y un renting mensual menor — BIA financia la diferencia."
+        f"Valor total equipos: valor de mercado de los equipos y su renting asociado. "
+        f"Con BIA: el cliente paga ${VALOR_EQUIPOS_REAL:,.0f} en equipos y un renting mensual menor — BIA financia la diferencia."
     )
 
     tabla = filtrado[[
