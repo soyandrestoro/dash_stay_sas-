@@ -614,7 +614,19 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
     por_pagar_ref  = valor_eq_com  - pagado_ref
 
     st.markdown("---")
-    st.markdown("### Detalle de Datos")
+    col_tit, col_filt = st.columns([3, 2])
+    with col_tit:
+        st.markdown("### Detalle de Datos")
+    with col_filt:
+        cuentas_tabla_opts = sorted(filtrado['cuenta'].astype(str).unique().tolist())
+        cuentas_tabla_sel  = st.multiselect(
+            "Filtrar por cuenta",
+            options=cuentas_tabla_opts,
+            default=[],
+            placeholder="Todas las cuentas",
+            key="detalle_cuentas_widget",
+            label_visibility="collapsed",
+        )
 
     # ── Banner BIA ──────────────────────────────────────────────────────────
     st.markdown(f"""
@@ -675,15 +687,6 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
         f"Con BIA: el cliente paga ${valor_eq_real:,.0f} en equipos y un renting mensual menor — BIA financia la diferencia."
     )
 
-    # ── Filtro de cuentas para la tabla ────────────────────────────────────
-    cuentas_tabla_opts = sorted(filtrado['cuenta'].astype(str).unique().tolist())
-    cuentas_tabla_sel  = st.multiselect(
-        "Filtrar tabla por cuenta",
-        options=cuentas_tabla_opts,
-        default=[],
-        placeholder="Todas las cuentas — selecciona para filtrar",
-        key="detalle_cuentas_widget",
-    )
     base_tabla = (
         filtrado if not cuentas_tabla_sel
         else filtrado[filtrado['cuenta'].astype(str).isin(cuentas_tabla_sel)]
