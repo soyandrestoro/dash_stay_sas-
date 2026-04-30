@@ -241,15 +241,21 @@ c4.metric(
     help="Costo total BIA incluyendo renting mensual de equipos"
 )
 
-ahorro_label = f"${ahorro_real:,.0f}"
-ahorro_delta = "Hay ahorro ✓" if ahorro_real > 0 else "Sin ahorro ✗"
-ahorro_color = "normal" if ahorro_real > 0 else "inverse"
+ahorro_tarifa = total_epm - total_bia   # ahorro solo en tarifa, sin renting
+
+if ahorro_tarifa > 0:
+    delta_txt   = f"${ahorro_tarifa:,.0f} sin renting"
+    delta_color = "normal"                # verde
+else:
+    delta_txt   = "Sin ahorro en tarifa"
+    delta_color = "off"                   # gris, nunca rojo
+
 c5.metric(
     "Ahorro vs EPM",
-    ahorro_label,
-    delta=ahorro_delta,
-    delta_color=ahorro_color,
-    help="EPM − (BIA + Renting). Positivo = BIA conviene, negativo = EPM conviene"
+    f"${ahorro_real:,.0f}",
+    delta=delta_txt,
+    delta_color=delta_color,
+    help="Valor principal: EPM − (BIA + Renting). Abajo: ahorro solo en tarifa de energía sin incluir renting"
 )
 
 # ── Gráficos ──────────────────────────────────────────────────────────────────
