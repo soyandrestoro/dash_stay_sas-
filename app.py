@@ -698,13 +698,15 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
     tabla['renting_ref']      = tabla['renting_mensual'] * FACTOR_COMERCIAL
     tabla['bia_financia']     = tabla['renting_ref'] - tabla['renting_mensual']
 
+    # costo_equipos = valor real (Con BIA) | valor_comercial = precio full
     tabla.columns = [
         'Cuenta', 'Dirección', 'Nivel', 'Mes', 'Consumo (kWh)',
         'Tarifa EPM ($/kWh)', 'Tarifa BIA ($/kWh)', 'Ahorro en Tarifa ($)',
-        'Valor Total Equipos ($)', 'Renting Mensual ($)',
-        'Valor Con BIA ($)', 'Renting Con BIA ($)', 'El Cliente Ahorra ($)',
+        'Valor Con BIA ($)', 'Renting Con BIA ($)',
+        'Valor Total Equipos ($)', 'Renting Mensual ($)', 'El Cliente Ahorra ($)',
     ]
 
+    # Precio full primero, luego Con BIA
     tabla = tabla[[
         'Cuenta', 'Dirección', 'Nivel', 'Mes', 'Consumo (kWh)',
         'Tarifa EPM ($/kWh)', 'Tarifa BIA ($/kWh)', 'Ahorro en Tarifa ($)',
