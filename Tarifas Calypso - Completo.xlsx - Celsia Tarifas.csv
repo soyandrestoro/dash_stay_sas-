@@ -1,0 +1,16 @@
+Mes,Nivel de tension ,Celsia Tarifa ,Bia Tarifa
+"noviembre 1, 2025",1 Usuario,"714,67","721,18"
+"diciembre 1, 2025",1 Usuario,"718,69","719,79"
+"enero 1, 2026",1 Usuario,"717,15","710,01"
+"febrero 1, 2026",1 Usuario,"740,87","692,72"
+"marzo 1, 2026",1 Usuario,"775,16","659,5"
+"abril 1, 2026",1 Usuario,"745,3","675,7"
+,,,
+,,,
+Mes,Nivel de tension ,Celsia Tarifa ,Bia Tarifa
+"noviembre 1, 2025",1 OR ,"808,67","815,18"
+"diciembre 1, 2025",1 OR ,"811,62","812,72"
+"enero 1, 2026",1 OR ,"809,71","802,58"
+"febrero 1, 2026",1 OR ,"833,78","785,28"
+"marzo 1, 2026",1 OR ,"873,45","757,79"
+"abril 1, 2026",1 OR ,"846,22","776,62"

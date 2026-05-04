@@ -10,12 +10,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ── Constantes ───────────────────────────────────────────────────────────────
+# ── Constantes ────────────────────────────────────────────────────────────────
 
-MESES_COLS = ['Octubre', 'Noviembre', 'Diciembre', 'Enero', 'Febrero', 'Marzo', 'Abril']
-MESES_KEYS = ['2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04']
+MESES_COLS = ['nov-25', 'dic-25', 'ene-26', 'feb-26', 'mar-26', 'abr-26']
+MESES_KEYS = ['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04']
+MESES_LABEL = {
+    '2025-11': 'Noviembre',
+    '2025-12': 'Diciembre',
+    '2026-01': 'Enero',
+    '2026-02': 'Febrero',
+    '2026-03': 'Marzo',
+    '2026-04': 'Abril',
+}
 MESES_TARIFA = {
-    '2025-10': 'octubre 1, 2025',
     '2025-11': 'noviembre 1, 2025',
     '2025-12': 'diciembre 1, 2025',
     '2026-01': 'enero 1, 2026',
@@ -24,140 +31,184 @@ MESES_TARIFA = {
     '2026-04': 'abril 1, 2026',
 }
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# (Nombre en columna Operador del CSV de consumo) → archivo de tarifas
+OPERADORES = {
+    'Afinia':       'Tarifas Calypso - Completo.xlsx - Afinia Tarifas.csv',
+    'Aire':         'Tarifas Calypso - Completo.xlsx - Aire Tarifas.csv',
+    'Celsia':       'Tarifas Calypso - Completo.xlsx - Celsia Tarifas.csv',
+    'Cens':         'Tarifas Calypso - Completo.xlsx - Cens Tarifas.csv',
+    'Electrohuila': 'Tarifas Calypso - Completo.xlsx - Electrohuila Tarifas.csv',
+    'Enel':         'Tarifas Calypso - Completo.xlsx - Enel Tarifas.csv',
+    'Epm':          'Tarifas Calypso - Completo.xlsx - Epm Tarifas.csv',
+    'Neu':          'Tarifas Calypso - Completo.xlsx - Neu Tarifas.csv',
+    'Qi energy':    'Tarifas Calypso - Completo.xlsx - Qi Energy Tarifas.csv',
+    'Vatia':        'Tarifas Calypso - Completo.xlsx - Vatia Tarifas .csv',
+}
 
-def limpiar_col(c):
-    # UTF-8 BOM leído como latin1 produce los 3 chars ï»¿ (ï»¿)
-    return c.replace('ï»¿', '').replace('﻿', '').strip()
+CONSUMOS_FILES = {
+    'Afinia':       'Fronteras_Calypso_Consumos- Completo.xlsx - Afinia (1).csv',
+    'Aire':         'Fronteras_Calypso_Consumos- Completo.xlsx - Aire.csv',
+    'Celsia':       'Fronteras_Calypso_Consumos- Completo.xlsx - Celsia.csv',
+    'Cens':         'Fronteras_Calypso_Consumos- Completo.xlsx - Cens.csv',
+    'Electrohuila': 'Fronteras_Calypso_Consumos- Completo.xlsx - Electrohuila.csv',
+    'Enel':         'Fronteras_Calypso_Consumos- Completo.xlsx - Enel.csv',
+    'Epm':          'Fronteras_Calypso_Consumos- Completo.xlsx - Epm.csv',
+    'Neu':          'Fronteras_Calypso_Consumos- Completo.xlsx - Neu.csv',
+    'Qi energy':    'Fronteras_Calypso_Consumos- Completo.xlsx - Qi energy.csv',
+    'Vatia':        'Fronteras_Calypso_Consumos- Completo.xlsx - Vatia.csv',
+}
 
-def limpiar_dinero(v):
+TODOS_ARCHIVOS = list(CONSUMOS_FILES.values()) + list(OPERADORES.values())
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def limpiar_num_es(v):
+    """Número con punto como separador de miles y coma como decimal → float."""
     if pd.isna(v):
         return 0.0
-    if isinstance(v, str):
-        return float(v.replace('$', '').replace(',', '').strip())
-    return float(v)
-
-def limpiar_num(v):
-    if pd.isna(v):
+    s = str(v).strip()
+    if not s:
         return 0.0
-    if isinstance(v, str):
-        return float(v.replace(',', '').strip())
-    return float(v)
-
-# ── Carga de datos ────────────────────────────────────────────────────────────
-
-ARCHIVOS_CSV = [
-    'Nivel de tensión y propiedad de activos 1 or.csv',
-    'Nivel de tensión y propiedad de activos 1 usuario.csv',
-    'Nivel de tensión y propiedad de activos 2 usuario .csv',
-    'Tarifas nivel de tension 1 or.csv',
-    'Tarifas nivel de tension 1 usuario.csv',
-    'Tarifas nivel de tension 2 usuario.csv',
-]
+    s = s.replace('.', '').replace(',', '.')
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
 
 def mtimes_csv():
-    return tuple(os.path.getmtime(f) for f in ARCHIVOS_CSV)
+    result = []
+    for f in TODOS_ARCHIVOS:
+        try:
+            result.append(os.path.getmtime(f))
+        except FileNotFoundError:
+            result.append(0)
+    return tuple(result)
+
+# ── Carga ─────────────────────────────────────────────────────────────────────
 
 @st.cache_data
 def cargar_datos(mtimes):
-    # Tarifas
-    cfg_tarifas = [
-        ('nivel_1_operador', 'Tarifas nivel de tension 1 or.csv'),
-        ('nivel_1_user',     'Tarifas nivel de tension 1 usuario.csv'),
-        ('nivel_2_operator', 'Tarifas nivel de tension 2 usuario.csv'),
-    ]
+    # 1. Tarifas: (operador, nivel_normalizado, mes_tarifa) → (tarifa_op, tarifa_bia)
     tarifas = {}
-    for nivel, fname in cfg_tarifas:
-        # Tarifas: Latin-1 con BOM — limpiar_col elimina ï»¿
-        t = pd.read_csv(fname, sep=';', encoding='latin1')
-        t.columns = [limpiar_col(c) for c in t.columns]
-        t['Mes'] = t['Mes'].str.strip()
-        tarifas[nivel] = {
-            row['Mes']: (float(row['Tarifa EPM']), float(row['Tarifa BIA']))
-            for _, row in t.iterrows()
-        }
+    for op, fname in OPERADORES.items():
+        try:
+            raw = pd.read_csv(fname, header=None, dtype=str)
+        except FileNotFoundError:
+            continue
 
-    # Consumos
-    cfg_consumos = [
-        ('Nivel de tensión y propiedad de activos 1 or.csv',       'nivel_1_operador', 'Nivel 1 - Operador'),
-        ('Nivel de tensión y propiedad de activos 1 usuario.csv',  'nivel_1_user',     'Nivel 1 - Usuario'),
-        ('Nivel de tensión y propiedad de activos 2 usuario .csv', 'nivel_2_operator', 'Nivel 2 - Usuario'),
-    ]
+        # Identificar filas de cabecera (contienen 'Mes' en la primera celda)
+        header_rows = raw[raw.iloc[:, 0].str.strip().str.lower() == 'mes'].index.tolist()
 
+        for i, h_idx in enumerate(header_rows):
+            next_h = header_rows[i + 1] if i + 1 < len(header_rows) else len(raw)
+            bloque = raw.iloc[h_idx + 1: next_h].copy()
+            bloque.columns = raw.iloc[h_idx].str.strip().tolist()
+            bloque = bloque.dropna(subset=[bloque.columns[0]])
+            bloque = bloque[bloque.iloc[:, 0].str.strip() != '']
+
+            col_nivel = bloque.columns[1]
+            col_op    = bloque.columns[2]
+            col_bia   = bloque.columns[3]
+
+            for _, row in bloque.iterrows():
+                mes_str = str(row[bloque.columns[0]]).strip().strip('"')
+                nivel   = str(row[col_nivel]).strip()
+                t_op    = limpiar_num_es(row[col_op])
+                t_bia   = limpiar_num_es(row[col_bia])
+                tarifas[(op, nivel, mes_str)] = (t_op, t_bia)
+
+    # 2. Consumos
     registros = []
-    for fname, nivel_key, nivel_label in cfg_consumos:
-        # Consumos: UTF-8 con BOM — utf-8-sig lo elimina automáticamente
-        df = pd.read_csv(fname, sep=';', encoding='utf-8-sig', on_bad_lines='skip')
-        df.columns = [c.strip() for c in df.columns]
+    for op, fname in CONSUMOS_FILES.items():
+        try:
+            raw = pd.read_csv(fname, header=None, dtype=str)
+        except FileNotFoundError:
+            continue
 
-        id_col = (
-            'Número de cuenta'      if 'Número de cuenta'      in df.columns else
-            'Dirección de frontera' if 'Dirección de frontera'  in df.columns else
-            'Ciudad'                if 'Ciudad'                 in df.columns else
-            None
-        )
+        header_rows = raw[raw.iloc[:, 0].str.strip().str.lower() == 'sede'].index.tolist()
 
-        for _, row in df.iterrows():
-            cuenta    = str(row[id_col]) if id_col else nivel_label
-            direccion = str(row['Dirección de frontera']) if 'Dirección de frontera' in df.columns else (
-                        str(row['Ciudad']) if 'Ciudad' in df.columns else '—')
-            costo_eq  = limpiar_dinero(row.get('Costo equipos', 0))
-            renting   = limpiar_dinero(row.get('Total Renting', 0))
+        for i, h_idx in enumerate(header_rows):
+            next_h = header_rows[i + 1] if i + 1 < len(header_rows) else len(raw)
+            bloque = raw.iloc[h_idx + 1: next_h].copy()
+            bloque.columns = [c.strip() for c in raw.iloc[h_idx].tolist()]
+            bloque = bloque.dropna(subset=['Sede'])
+            bloque = bloque[bloque['Sede'].str.strip() != '']
 
-            for mes_col, mes_key in zip(MESES_COLS, MESES_KEYS):
-                col = next((c for c in df.columns if c == mes_col), None)
-                if col is None:
-                    continue
-                consumo = limpiar_num(row[col])
-                if consumo <= 0:
-                    continue
+            col_nivel = 'Nivel de tension'
 
-                t = tarifas[nivel_key].get(MESES_TARIFA[mes_key])
-                if t is None:
-                    continue
-                tarifa_epm, tarifa_bia = t
+            for _, row in bloque.iterrows():
+                sede  = str(row['Sede']).strip()
+                nivel = str(row[col_nivel]).strip()
 
-                costo_epm    = consumo * tarifa_epm
-                costo_bia    = consumo * tarifa_bia
-                ahorro_bruto = costo_epm - costo_bia
-                ahorro_neto  = ahorro_bruto - renting
+                for mes_col, mes_key in zip(MESES_COLS, MESES_KEYS):
+                    if mes_col not in bloque.columns:
+                        continue
+                    consumo = limpiar_num_es(row[mes_col])
+                    if consumo <= 0:
+                        continue
 
-                registros.append({
-                    'cuenta':          cuenta,
-                    'direccion':       direccion,
-                    'nivel':           nivel_label,
-                    'mes':             mes_key,
-                    'consumo':         consumo,
-                    'tarifa_epm':      tarifa_epm,
-                    'tarifa_bia':      tarifa_bia,
-                    'costo_epm':       costo_epm,
-                    'costo_bia':       costo_bia,
-                    'ahorro_bruto':    ahorro_bruto,
-                    'costo_equipos':   costo_eq,
-                    'renting_mensual': renting,
-                    'ahorro_neto':     ahorro_neto,
-                })
+                    mes_tarifa = MESES_TARIFA[mes_key]
+                    t = tarifas.get((op, nivel, mes_tarifa))
+                    if t is None:
+                        # Intentar con nivel sin espacios extra
+                        for k in tarifas:
+                            if k[0] == op and k[1].strip() == nivel and k[2] == mes_tarifa:
+                                t = tarifas[k]
+                                break
+                    if t is None:
+                        continue
+
+                    tarifa_op, tarifa_bia = t
+                    costo_op  = consumo * tarifa_op
+                    costo_bia = consumo * tarifa_bia
+                    ahorro    = costo_op - costo_bia
+
+                    registros.append({
+                        'sede':       sede,
+                        'operador':   op,
+                        'nivel':      nivel,
+                        'mes':        mes_key,
+                        'consumo':    consumo,
+                        'tarifa_op':  tarifa_op,
+                        'tarifa_bia': tarifa_bia,
+                        'costo_op':   costo_op,
+                        'costo_bia':  costo_bia,
+                        'ahorro':     ahorro,
+                    })
 
     return pd.DataFrame(registros)
 
 df = cargar_datos(mtimes_csv())
 
-# ── Encabezado ────────────────────────────────────────────────────────────────
+# ── Header ────────────────────────────────────────────────────────────────────
 
-st.title("⚡ Dashboard Energético")
-st.markdown("**Stay SAS** | EPM vs BIA | Oct 2025 – Abr 2026")
+logo_path = "Bia-energy-1-1024x597.webp"
+if os.path.exists(logo_path):
+    col_logo, col_title = st.columns([1, 6])
+    with col_logo:
+        st.image(logo_path, width=120)
+    with col_title:
+        st.markdown("## Dashboard Energético")
+        st.markdown("**Calypso** | Distribuidor vs BIA | Nov 2025 – Abr 2026")
+else:
+    st.title("⚡ Dashboard Energético")
+    st.markdown("**Calypso** | Distribuidor vs BIA | Nov 2025 – Abr 2026")
+
 st.markdown("---")
 
-# ── Búsqueda y filtros ────────────────────────────────────────────────────────
+# ── Filtros ───────────────────────────────────────────────────────────────────
 
-# Inicializar estado de seguimiento de nivel
+if 'ultimo_op' not in st.session_state:
+    st.session_state.ultimo_op = ""
 if 'ultimo_nivel' not in st.session_state:
     st.session_state.ultimo_nivel = ""
 
 def reiniciar_filtros():
-    for key in ('busqueda_widget', 'nivel_widget', 'sede_widget', 'mes_widget', 'heatmap_sedes_widget', 'detalle_cuentas_widget'):
+    for key in ('busqueda_widget', 'op_widget', 'nivel_widget', 'sede_widget',
+                'mes_widget', 'heatmap_sedes_widget', 'detalle_sedes_widget', 'ranking_sede_widget'):
         if key in st.session_state:
             del st.session_state[key]
+    st.session_state.ultimo_op    = ""
     st.session_state.ultimo_nivel = ""
 
 col_titulo, col_btn = st.columns([6, 1])
@@ -168,110 +219,98 @@ with col_btn:
     st.button("✕ Limpiar", on_click=reiniciar_filtros, use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-busqueda = st.text_input("🔍 Buscar por número de cuenta o dirección",
-                         placeholder="Ej: 12975372", key="busqueda_widget")
+busqueda = st.text_input("🔍 Buscar por sede",
+                         placeholder="Ej: ENGATIVA", key="busqueda_widget")
 
-c1, c2, c3 = st.columns(3)
+c1, c2, c3, c4 = st.columns(4)
 
 with c1:
+    operador = st.selectbox("Operador / Distribuidor",
+                            [""] + sorted(df['operador'].unique().tolist()),
+                            index=0, key="op_widget")
+
+# Reset cascada: operador → nivel
+if operador != st.session_state.ultimo_op:
+    st.session_state.ultimo_op = operador
+    for k in ('nivel_widget', 'sede_widget'):
+        if k in st.session_state:
+            del st.session_state[k]
+    st.session_state.ultimo_nivel = ""
+
+pool_op = df if not operador else df[df['operador'] == operador]
+
+with c2:
     nivel = st.selectbox("Nivel de Tensión",
-                         [""] + sorted(df['nivel'].unique().tolist()),
+                         [""] + sorted(pool_op['nivel'].unique().tolist()),
                          index=0, key="nivel_widget")
 
-# Si el nivel cambió, borrar el widget de sede para que vuelva a índice 0
+# Reset cascada: nivel → sede
 if nivel != st.session_state.ultimo_nivel:
     st.session_state.ultimo_nivel = nivel
     if 'sede_widget' in st.session_state:
         del st.session_state['sede_widget']
 
-# Calcular opciones de sede según el nivel activo
-pool = df if not nivel else df[df['nivel'] == nivel]
-cuentas_disp = [""] + sorted(pool['cuenta'].astype(str).unique().tolist())
-
-with c2:
-    sede = st.selectbox("Sede / Cuenta", cuentas_disp, index=0, key="sede_widget")
+pool_niv = pool_op if not nivel else pool_op[pool_op['nivel'] == nivel]
+sedes_disp = [""] + sorted(pool_niv['sede'].astype(str).unique().tolist())
 
 with c3:
-    mes = st.selectbox("Mes", [""] + sorted(df['mes'].unique().tolist()),
-                       index=0, key="mes_widget")
+    sede = st.selectbox("Sede", sedes_disp, index=0, key="sede_widget")
+
+with c4:
+    mes = st.selectbox("Mes", [""] + MESES_KEYS, index=0,
+                       format_func=lambda x: MESES_LABEL.get(x, x) if x else "",
+                       key="mes_widget")
 
 # Aplicar filtros
 filtrado = df.copy()
 if busqueda:
-    mask = (filtrado['cuenta'].astype(str).str.contains(busqueda, case=False) |
-            filtrado['direccion'].astype(str).str.contains(busqueda, case=False))
-    filtrado = filtrado[mask]
+    filtrado = filtrado[filtrado['sede'].str.contains(busqueda, case=False, na=False)]
+if operador:
+    filtrado = filtrado[filtrado['operador'] == operador]
 if nivel:
     filtrado = filtrado[filtrado['nivel'] == nivel]
 if sede:
-    filtrado = filtrado[filtrado['cuenta'].astype(str) == sede]
+    filtrado = filtrado[filtrado['sede'].astype(str) == sede]
 if mes:
     filtrado = filtrado[filtrado['mes'] == mes]
 
-# Banner de estado
 st.markdown("---")
 partes = []
-if busqueda: partes.append(f"**Búsqueda:** {busqueda}")
-if nivel:    partes.append(f"**Nivel:** {nivel}")
-if sede:     partes.append(f"**Sede:** {sede}")
-if mes:      partes.append(f"**Mes:** {mes}")
+if busqueda:  partes.append(f"**Búsqueda:** {busqueda}")
+if operador:  partes.append(f"**Operador:** {operador}")
+if nivel:     partes.append(f"**Nivel:** {nivel}")
+if sede:      partes.append(f"**Sede:** {sede}")
+if mes:       partes.append(f"**Mes:** {MESES_LABEL.get(mes, mes)}")
 prefijo = "Filtros activos: " + " • ".join(partes) if partes else "Mostrando todos los datos"
 st.info(f"{prefijo} • **{len(filtrado)} registros**")
 
 # ── Tarjetas ──────────────────────────────────────────────────────────────────
 
-total_consumo  = filtrado['consumo'].sum()
-total_epm      = filtrado['costo_epm'].sum()
-total_bia      = filtrado['costo_bia'].sum()
-total_renting  = filtrado['renting_mensual'].sum()
-total_bia_rent = total_bia + total_renting
-ahorro_real    = total_epm - total_bia_rent   # positivo = ahorra, negativo = más caro con BIA
-
-n_sedes  = filtrado['cuenta'].nunique()
-contexto = sede if sede else (nivel if nivel else "Todas las sedes")
+total_consumo = filtrado['consumo'].sum()
+total_op      = filtrado['costo_op'].sum()
+total_bia     = filtrado['costo_bia'].sum()
+ahorro_total  = filtrado['ahorro'].sum()
 
 st.markdown("### Resumen")
-c1, c2, c3, c4, c5 = st.columns(5)
+c1, c2, c3, c4 = st.columns(4)
 
-c1.metric(
-    "Consumo",
-    f"{total_consumo:,.0f} kWh",
-    help="Energía consumida en el período seleccionado"
-)
-c2.metric(
-    "Valor con EPM",
-    f"${total_epm:,.0f}",
-    help="Costo total pagando tarifa EPM"
-)
-c3.metric(
-    "Valor con BIA",
-    f"${total_bia:,.0f}",
-    help="Costo de energía pagando tarifa BIA (sin renting)"
-)
-c4.metric(
-    "BIA + Renting",
-    f"${total_bia_rent:,.0f}",
-    delta=f"-${total_renting:,.0f} renting",
-    delta_color="off",
-    help="Costo total BIA incluyendo renting mensual de equipos"
-)
+c1.metric("Consumo", f"{total_consumo:,.0f} kWh",
+          help="Energía total en el período seleccionado")
+c2.metric("Costo con Distribuidor", f"${total_op:,.0f}",
+          help="Costo total pagando tarifa del distribuidor")
+c3.metric("Costo con BIA", f"${total_bia:,.0f}",
+          help="Costo total pagando tarifa BIA")
 
-ahorro_tarifa = total_epm - total_bia   # ahorro solo en tarifa, sin renting
-
-if ahorro_tarifa > 0:
-    delta_txt   = f"${ahorro_tarifa:,.0f} sin renting"
-    delta_color = "normal"                # verde
+if ahorro_total > 0:
+    delta_color = "normal"
+    delta_txt   = f"${ahorro_total:,.0f} ahorrado"
 else:
-    delta_txt   = "Sin ahorro en tarifa"
-    delta_color = "off"                   # gris, nunca rojo
+    delta_color = "inverse"
+    delta_txt   = f"${abs(ahorro_total):,.0f} más caro"
 
-c5.metric(
-    "Ahorro vs EPM",
-    f"${ahorro_real:,.0f}",
-    delta=delta_txt,
-    delta_color=delta_color,
-    help="Valor principal: EPM − (BIA + Renting). Abajo: ahorro solo en tarifa de energía sin incluir renting"
-)
+c4.metric("Ahorro vs Distribuidor", f"${ahorro_total:,.0f}",
+          delta=delta_txt, delta_color=delta_color,
+          help="Distribuidor − BIA. Positivo = BIA más barato")
 
 # ── Gráficos ──────────────────────────────────────────────────────────────────
 
@@ -279,77 +318,58 @@ if len(filtrado) > 0:
     st.markdown("---")
     st.markdown("### Visualizaciones")
 
-    # ── Tarifas EPM vs BIA (arriba, ancho completo) ───────────────────────────
-
-    st.markdown("### Comportamiento de Tarifas ($/kWh)")
+    # ── Tarifas por mes ───────────────────────────────────────────────────────
+    st.markdown("#### Comportamiento de Tarifas ($/kWh)")
 
     tarifas_mes = (
         filtrado
-        .groupby(['mes', 'nivel'], as_index=False)
-        .agg(tarifa_epm=('tarifa_epm', 'first'), tarifa_bia=('tarifa_bia', 'first'))
-        .sort_values(['nivel', 'mes'])
+        .groupby(['mes', 'operador', 'nivel'], as_index=False)
+        .agg(tarifa_op=('tarifa_op', 'first'), tarifa_bia=('tarifa_bia', 'first'))
+        .sort_values(['operador', 'nivel', 'mes'])
     )
 
-    COLORES_EPM = {
-        'Nivel 1 - Operador': '#FFB627',
-        'Nivel 1 - Usuario':  '#FFC94D',
-        'Nivel 2 - Usuario':  '#FFD980',
-    }
-    COLORES_BIA = {
-        'Nivel 1 - Operador': '#09B4CC',
-        'Nivel 1 - Usuario':  '#2ECC71',
-        'Nivel 2 - Usuario':  '#7555F3',
-    }
+    PALETTE_OP = ['#FFB627', '#FF7F50', '#FF4F7B', '#C878E0',
+                  '#7555F3', '#09B4CC', '#2ECC71', '#F1C40F',
+                  '#E67E22', '#E74C3C']
+    PALETTE_BIA = ['#0080FF', '#00BCD4', '#00E5FF', '#69F0AE',
+                   '#B2FF59', '#FFFF00', '#FFD740', '#FF6E40',
+                   '#FF1744', '#D500F9']
+
+    combos = tarifas_mes.groupby(['operador', 'nivel']).size().index.tolist()
 
     fig_tarifas = go.Figure()
-    for niv in sorted(tarifas_mes['nivel'].unique()):
-        sub = tarifas_mes[tarifas_mes['nivel'] == niv]
-        c_epm = COLORES_EPM.get(niv, '#FFB627')
-        c_bia = COLORES_BIA.get(niv, '#09B4CC')
+    for idx, (op, niv) in enumerate(combos):
+        sub = tarifas_mes[(tarifas_mes['operador'] == op) & (tarifas_mes['nivel'] == niv)]
+        c_op  = PALETTE_OP[idx % len(PALETTE_OP)]
+        c_bia = PALETTE_BIA[idx % len(PALETTE_BIA)]
+        lbl   = f"{op} · {niv}"
         fig_tarifas.add_trace(go.Scatter(
-            x=sub['mes'], y=sub['tarifa_epm'],
-            mode='lines+markers',
-            name=f'EPM · {niv}',
-            line=dict(color=c_epm, width=1.5, shape='spline'),
-            marker=dict(size=5, symbol='circle', color=c_epm,
-                        line=dict(width=0)),
-            hovertemplate='$%{y:.4f}/kWh<extra>EPM · ' + niv + '</extra>',
+            x=sub['mes'], y=sub['tarifa_op'],
+            mode='lines+markers', name=f'Dist. · {lbl}',
+            line=dict(color=c_op, width=1.5, shape='spline'),
+            marker=dict(size=5, symbol='circle', color=c_op),
+            hovertemplate='$%{y:,.2f}/kWh<extra>Dist. · ' + lbl + '</extra>',
         ))
         fig_tarifas.add_trace(go.Scatter(
             x=sub['mes'], y=sub['tarifa_bia'],
-            mode='lines+markers',
-            name=f'BIA · {niv}',
+            mode='lines+markers', name=f'BIA · {lbl}',
             line=dict(color=c_bia, width=1.5, dash='dot', shape='spline'),
-            marker=dict(size=5, symbol='diamond', color=c_bia,
-                        line=dict(width=0)),
-            hovertemplate='$%{y:.4f}/kWh<extra>BIA · ' + niv + '</extra>',
+            marker=dict(size=5, symbol='diamond', color=c_bia),
+            hovertemplate='$%{y:,.2f}/kWh<extra>BIA · ' + lbl + '</extra>',
         ))
 
     fig_tarifas.update_layout(
-        hovermode='x unified',
-        template='plotly_dark',
-        height=360,
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        legend=dict(
-            orientation='h', yanchor='bottom', y=1.05,
-            xanchor='left', x=0,
-            font=dict(size=11),
-            bgcolor='rgba(0,0,0,0)', borderwidth=0,
-        ),
-        xaxis=dict(
-            title='', tickfont=dict(size=11),
-            showgrid=True, gridcolor='rgba(140,155,176,0.12)', gridwidth=1,
-            zeroline=False, showline=False,
-        ),
-        yaxis=dict(
-            title='$/kWh', tickfont=dict(size=11), tickformat='$.3f',
-            showgrid=True, gridcolor='rgba(140,155,176,0.12)', gridwidth=1,
-            zeroline=False, showline=False,
-        ),
-        margin=dict(t=10, b=40, l=60, r=20),
-        hoverlabel=dict(bgcolor='#101525', bordercolor='#1A2035',
-                        font=dict(size=12)),
+        hovermode='x unified', template='plotly_dark', height=380,
+        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+        legend=dict(orientation='h', yanchor='bottom', y=1.04,
+                    xanchor='left', x=0, font=dict(size=10),
+                    bgcolor='rgba(0,0,0,0)', borderwidth=0),
+        xaxis=dict(title='', tickfont=dict(size=11), showgrid=True,
+                   gridcolor='rgba(140,155,176,0.12)', zeroline=False),
+        yaxis=dict(title='$/kWh', tickfont=dict(size=11), tickformat='$,.0f',
+                   showgrid=True, gridcolor='rgba(140,155,176,0.12)', zeroline=False),
+        margin=dict(t=10, b=40, l=70, r=20),
+        hoverlabel=dict(bgcolor='#101525', bordercolor='#1A2035', font=dict(size=12)),
     )
     st.plotly_chart(fig_tarifas, use_container_width=True)
 
@@ -357,60 +377,48 @@ if len(filtrado) > 0:
         filtrado
         .groupby('mes', as_index=False)
         .agg(
-            ahorro_bruto=('ahorro_bruto', 'sum'),
-            renting_mensual=('renting_mensual', 'sum'),
-            ahorro_neto=('ahorro_neto', 'sum'),
-            costo_epm=('costo_epm', 'sum'),
+            ahorro=('ahorro', 'sum'),
+            costo_op=('costo_op', 'sum'),
             costo_bia=('costo_bia', 'sum'),
             consumo=('consumo', 'sum'),
         )
         .sort_values('mes')
     )
 
-    # ── 1. Waterfall mensual ──────────────────────────────────────────────────
-    meses_wf  = list(por_mes['mes']) + ['Total']
-    valores_wf = list(por_mes['ahorro_neto'])
+    # ── Waterfall de ahorro ───────────────────────────────────────────────────
+    meses_wf   = list(por_mes['mes']) + ['Total']
+    valores_wf = list(por_mes['ahorro'])
     medidas_wf = ['relative'] * len(por_mes) + ['total']
-    textos_wf  = [f"${v:,.0f}" for v in por_mes['ahorro_neto']] + [f"${sum(por_mes['ahorro_neto']):,.0f}"]
+    textos_wf  = [f"${v:,.0f}" for v in por_mes['ahorro']] + [f"${sum(por_mes['ahorro']):,.0f}"]
 
     fig_wf = go.Figure(go.Waterfall(
-        orientation='v',
-        measure=medidas_wf,
-        x=meses_wf,
-        y=valores_wf + [0],
-        text=textos_wf,
-        textposition='outside',
-        textfont=dict(size=11),
+        orientation='v', measure=medidas_wf, x=meses_wf,
+        y=valores_wf + [0], text=textos_wf,
+        textposition='outside', textfont=dict(size=11),
         connector=dict(line=dict(color='#8C9BB0', width=1)),
         increasing=dict(marker=dict(color='#2ECC71')),
-        decreasing=dict(marker=dict(color='#8C9BB0')),
+        decreasing=dict(marker=dict(color='#E74C3C')),
         totals=dict(marker=dict(color='#7555F3')),
     ))
     fig_wf.update_layout(
-        title='Flujo de Ahorro Neto Mensual (Ahorro tarifa − Renting)',
+        title='Ahorro Mensual (Distribuidor − BIA)',
         xaxis_title='Mes', yaxis_title='Monto ($)',
-        template='plotly_dark', height=420,
-        showlegend=False,
+        template='plotly_dark', height=420, showlegend=False,
     )
     st.plotly_chart(fig_wf, use_container_width=True)
 
-    # ── 2. Heatmap Sede × Mes  +  Participación de Sede ─────────────────────
+    # ── Heatmap + Participación de Sede ──────────────────────────────────────
     por_sede = (
         filtrado
-        .groupby('cuenta', as_index=False)
-        .agg(
-            consumo    =('consumo',    'sum'),
-            ahorro_neto=('ahorro_neto','sum'),
-            nivel      =('nivel',      'first'),
-        )
+        .groupby('sede', as_index=False)
+        .agg(consumo=('consumo', 'sum'), ahorro=('ahorro', 'sum'),
+             operador=('operador', 'first'), nivel=('nivel', 'first'))
     )
 
-    # Filtro de sedes para el heatmap (depende de filtros principales)
-    cuentas_disp_hm = sorted(filtrado['cuenta'].astype(str).unique().tolist())
+    sedes_disp_hm = sorted(filtrado['sede'].astype(str).unique().tolist())
     sedes_hm = st.multiselect(
         "Sedes en el mapa de calor",
-        options=cuentas_disp_hm,
-        default=[],
+        options=sedes_disp_hm, default=[],
         placeholder="Selecciona una o varias sedes para visualizar…",
         key="heatmap_sedes_widget",
     )
@@ -421,9 +429,9 @@ if len(filtrado) > 0:
         if not sedes_hm:
             st.info("Selecciona al menos una sede arriba para ver el mapa de calor.")
         else:
-            df_hm = filtrado[filtrado['cuenta'].astype(str).isin(sedes_hm)]
+            df_hm = filtrado[filtrado['sede'].astype(str).isin(sedes_hm)]
             pivot = df_hm.pivot_table(
-                index='cuenta', columns='mes', values='ahorro_neto',
+                index='sede', columns='mes', values='ahorro',
                 aggfunc='sum', fill_value=0,
             )
             cols_ord = [m for m in MESES_KEYS if m in pivot.columns]
@@ -431,19 +439,16 @@ if len(filtrado) > 0:
             pivot = pivot.loc[pivot.sum(axis=1).sort_values(ascending=True).index]
 
             fig_hm = go.Figure(go.Heatmap(
-                z=pivot.values,
-                x=list(pivot.columns),
+                z=pivot.values, x=list(pivot.columns),
                 y=[str(c) for c in pivot.index],
-                colorscale=[[0.0, '#7555F3'], [0.5, '#101525'], [1.0, '#2ECC71']],
-                zmid=0,
-                hoverongaps=False,
-                hovertemplate='<b>Cuenta %{y}</b><br>Mes: %{x}<br>Ahorro neto: $%{z:,.0f}<extra></extra>',
+                colorscale=[[0.0, '#E74C3C'], [0.5, '#101525'], [1.0, '#2ECC71']],
+                zmid=0, hoverongaps=False,
+                hovertemplate='<b>%{y}</b><br>Mes: %{x}<br>Ahorro: $%{z:,.0f}<extra></extra>',
                 colorbar=dict(title='Ahorro ($)', tickformat='$,.0f'),
             ))
             fig_hm.update_layout(
-                title='Ahorro Neto por Sede y Mes',
-                xaxis_title='Mes',
-                yaxis_title='',
+                title='Ahorro por Sede y Mes',
+                xaxis_title='Mes', yaxis_title='',
                 template='plotly_dark',
                 height=max(300, len(pivot) * 40 + 100),
             )
@@ -451,94 +456,69 @@ if len(filtrado) > 0:
 
     with c2:
         st.markdown("**Participación de Sede**")
-        ranking = por_sede.sort_values('ahorro_neto', ascending=False)
-        sede_opts = [""] + ranking['cuenta'].astype(str).tolist()
-        sede_sel = st.selectbox(
-            "Selecciona una sede",
-            sede_opts,
-            index=0,
-            key="ranking_sede_widget",
-        )
+        ranking = por_sede.sort_values('ahorro', ascending=False)
+        sede_opts = [""] + ranking['sede'].astype(str).tolist()
+        sede_sel = st.selectbox("Selecciona una sede", sede_opts, index=0,
+                                key="ranking_sede_widget")
 
         if not sede_sel:
             st.info("Selecciona una sede para ver su participación en el resultado global.")
         else:
-            det = filtrado[filtrado['cuenta'].astype(str) == sede_sel]
-            niv_sede   = det['nivel'].iloc[0] if len(det) else '—'
-            s_consumo  = det['consumo'].sum()
-            s_ahorro   = det['ahorro_neto'].sum()
-            s_epm      = det['costo_epm'].sum()
-            s_bia      = det['costo_bia'].sum()
-            s_bia_rent = s_bia + det['renting_mensual'].sum()
+            det = filtrado[filtrado['sede'].astype(str) == sede_sel]
+            niv_sede  = det['nivel'].iloc[0]    if len(det) else '—'
+            op_sede   = det['operador'].iloc[0] if len(det) else '—'
+            s_consumo = det['consumo'].sum()
+            s_ahorro  = det['ahorro'].sum()
+            s_op      = det['costo_op'].sum()
+            s_bia     = det['costo_bia'].sum()
 
-            g_consumo  = filtrado['consumo'].sum()
-            g_ahorro   = filtrado['ahorro_neto'].sum()
-            g_epm      = filtrado['costo_epm'].sum()
-            g_bia_rent = filtrado['costo_bia'].sum() + filtrado['renting_mensual'].sum()
+            g_consumo = filtrado['consumo'].sum()
+            g_ahorro  = filtrado['ahorro'].sum()
+            g_op      = filtrado['costo_op'].sum()
+            g_bia     = filtrado['costo_bia'].sum()
 
             def _pct(a, b): return round(a / b * 100, 1) if b else 0.0
 
-            p_consumo  = _pct(s_consumo,  g_consumo)
-            p_ahorro   = _pct(s_ahorro,   g_ahorro)
-            p_epm      = _pct(s_epm,      g_epm)
-            p_bia_rent = _pct(s_bia_rent, g_bia_rent)
+            p_consumo = _pct(s_consumo, g_consumo)
+            p_ahorro  = _pct(s_ahorro,  g_ahorro)
+            p_op      = _pct(s_op,      g_op)
+            p_bia     = _pct(s_bia,     g_bia)
 
-            c_ahorro = '#2ECC71' if s_ahorro > 0 else '#8C9BB0'
+            c_ahorro = '#2ECC71' if s_ahorro >= 0 else '#E74C3C'
             st.markdown(
-                f"<span style='color:#8C9BB0;font-size:0.82em'>{niv_sede}</span>&nbsp;&nbsp;"
-                f"<span style='color:{c_ahorro};font-weight:600'>Ahorro neto: ${s_ahorro:,.0f}</span>",
+                f"<span style='color:#8C9BB0;font-size:0.82em'>{op_sede} · {niv_sede}</span>&nbsp;&nbsp;"
+                f"<span style='color:{c_ahorro};font-weight:600'>Ahorro: ${s_ahorro:,.0f}</span>",
                 unsafe_allow_html=True,
             )
 
-            st.markdown("""
-<div style='background:#101525;border-left:3px solid #7555F3;padding:10px 14px;border-radius:4px;margin:10px 0;font-size:0.82em;color:#8C9BB0;line-height:1.6'>
-<b style='color:#FFFFFF'>¿Cómo leer este panel?</b><br>
-Cada tarjeta muestra el <b style='color:#FFFFFF'>peso porcentual</b> de esta sede dentro del total filtrado, y el valor absoluto debajo.<br><br>
-⚡ <b style='color:#09B4CC'>Consumo</b> — fracción de la energía total consumida por esta sede.<br>
-💰 <b style='color:#2ECC71'>Ahorro Neto</b> — porción del ahorro (o pérdida) que aporta esta sede.<br>
-🔴 <b style='color:#FFB627'>Costo EPM</b> — cuánto representa esta sede del costo total si se pagara con EPM.<br>
-🟢 <b style='color:#7555F3'>BIA + Renting</b> — su peso en el costo real con BIA incluyendo el renting mensual.<br><br>
-Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del total.
-</div>
-""", unsafe_allow_html=True)
-
             ma, mb = st.columns(2)
-            ma.metric("⚡ Consumo",     f"{p_consumo:.1f}%",  f"{s_consumo:,.0f} kWh", delta_color="off")
-            mb.metric("💰 Ahorro Neto", f"{p_ahorro:.1f}%",   f"${s_ahorro:,.0f}",      delta_color="off")
+            ma.metric("⚡ Consumo",        f"{p_consumo:.1f}%", f"{s_consumo:,.0f} kWh", delta_color="off")
+            mb.metric("💰 Ahorro",         f"{p_ahorro:.1f}%",  f"${s_ahorro:,.0f}",     delta_color="off")
             mc, md = st.columns(2)
-            mc.metric("🔴 Costo EPM",   f"{p_epm:.1f}%",      f"${s_epm:,.0f}",         delta_color="off")
-            md.metric("🟢 BIA+Renting", f"{p_bia_rent:.1f}%", f"${s_bia_rent:,.0f}",    delta_color="off")
+            mc.metric("🔴 Costo Dist.",    f"{p_op:.1f}%",      f"${s_op:,.0f}",         delta_color="off")
+            md.metric("🟢 Costo BIA",      f"{p_bia:.1f}%",     f"${s_bia:,.0f}",        delta_color="off")
 
-            st.markdown("")
-
-            labels = ['Consumo', 'Ahorro Neto', 'Costo EPM', 'BIA+Renting']
-            vals   = [p_consumo, p_ahorro, p_epm, p_bia_rent]
+            labels = ['Consumo', 'Ahorro', 'Costo Dist.', 'Costo BIA']
+            vals   = [p_consumo, p_ahorro, p_op, p_bia]
             colors = ['#09B4CC', c_ahorro, '#FFB627', '#7555F3']
 
             fig_p = go.Figure()
-            fig_p.add_trace(go.Bar(
-                x=[100] * 4, y=labels, orientation='h',
-                marker_color='rgba(140,155,176,0.1)',
-                showlegend=False, hoverinfo='skip',
-            ))
-            fig_p.add_trace(go.Bar(
-                x=vals, y=labels, orientation='h',
-                marker_color=colors,
-                text=[f"{v:.1f}%" for v in vals],
-                textposition='inside',
-                textfont=dict(size=12, color='#FFFFFF'),
-                showlegend=False,
-                hovertemplate='%{y}: %{x:.1f}% del total<extra></extra>',
-            ))
+            fig_p.add_trace(go.Bar(x=[100] * 4, y=labels, orientation='h',
+                                   marker_color='rgba(140,155,176,0.1)',
+                                   showlegend=False, hoverinfo='skip'))
+            fig_p.add_trace(go.Bar(x=vals, y=labels, orientation='h',
+                                   marker_color=colors,
+                                   text=[f"{v:.1f}%" for v in vals],
+                                   textposition='inside',
+                                   textfont=dict(size=12, color='#FFFFFF'),
+                                   showlegend=False,
+                                   hovertemplate='%{y}: %{x:.1f}%<extra></extra>'))
             fig_p.update_layout(
-                barmode='overlay',
-                template='plotly_dark',
-                height=240,
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
+                barmode='overlay', template='plotly_dark', height=240,
+                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                 xaxis=dict(range=[0, 100], showgrid=False, showticklabels=False, zeroline=False),
                 yaxis=dict(showgrid=False, tickfont=dict(size=11)),
-                margin=dict(t=0, b=10, l=100, r=20),
+                margin=dict(t=0, b=10, l=110, r=20),
             )
             st.plotly_chart(fig_p, use_container_width=True)
 
@@ -546,23 +526,19 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
 
     with c1:
         fig = go.Figure([
-            go.Bar(
-                x=por_mes['mes'], y=por_mes['costo_epm'],
-                name='EPM', marker_color='#7555F3',
-                text=[f"${v:,.0f}" for v in por_mes['costo_epm']],
-                textposition='outside', textfont=dict(size=10, color='#8C9BB0'),
-                hovertemplate='EPM %{x}: $%{y:,.0f}<extra></extra>',
-            ),
-            go.Bar(
-                x=por_mes['mes'], y=por_mes['costo_bia'],
-                name='BIA', marker_color='#09B4CC',
-                text=[f"${v:,.0f}" for v in por_mes['costo_bia']],
-                textposition='outside', textfont=dict(size=10, color='#8C9BB0'),
-                hovertemplate='BIA %{x}: $%{y:,.0f}<extra></extra>',
-            ),
+            go.Bar(x=por_mes['mes'], y=por_mes['costo_op'],
+                   name='Distribuidor', marker_color='#7555F3',
+                   text=[f"${v:,.0f}" for v in por_mes['costo_op']],
+                   textposition='outside', textfont=dict(size=10, color='#8C9BB0'),
+                   hovertemplate='Dist. %{x}: $%{y:,.0f}<extra></extra>'),
+            go.Bar(x=por_mes['mes'], y=por_mes['costo_bia'],
+                   name='BIA', marker_color='#09B4CC',
+                   text=[f"${v:,.0f}" for v in por_mes['costo_bia']],
+                   textposition='outside', textfont=dict(size=10, color='#8C9BB0'),
+                   hovertemplate='BIA %{x}: $%{y:,.0f}<extra></extra>'),
         ])
         fig.update_layout(
-            title="Costo Comparativo (EPM vs BIA)",
+            title="Costo Comparativo (Distribuidor vs BIA)",
             xaxis_title="", yaxis_title="$",
             barmode='group', hovermode='x unified',
             template='plotly_dark', height=420,
@@ -577,149 +553,52 @@ Las barras horizontales muestran visualmente ese porcentaje sobre el 100% del to
         st.plotly_chart(fig, use_container_width=True)
 
     with c2:
-        por_mes['acumulado'] = por_mes['ahorro_neto'].cumsum()
+        por_mes['acumulado'] = por_mes['ahorro'].cumsum()
         fig = go.Figure([
-            go.Scatter(
-                x=por_mes['mes'], y=por_mes['acumulado'],
-                mode='lines+markers', name='Acumulado Neto',
-                line=dict(color='#09B4CC', width=3), fill='tozeroy'
-            )
+            go.Scatter(x=por_mes['mes'], y=por_mes['acumulado'],
+                       mode='lines+markers', name='Acumulado',
+                       line=dict(color='#09B4CC', width=3), fill='tozeroy')
         ])
-        fig.update_layout(title="Acumulado Neto por Período",
-                          xaxis_title="Mes", yaxis_title="Monto Acumulado ($)",
-                          hovermode='x', template='plotly_dark', height=400)
+        fig.update_layout(
+            title="Ahorro Acumulado por Período",
+            xaxis_title="Mes", yaxis_title="$ Acumulado",
+            hovermode='x', template='plotly_dark', height=400,
+        )
         st.plotly_chart(fig, use_container_width=True)
 
     # ── Tabla detallada ───────────────────────────────────────────────────────
-
-    FACTOR_COMERCIAL = 1.40
-    N_MESES          = 7
-
     st.markdown("---")
     col_tit, col_filt = st.columns([2, 3])
     with col_tit:
         st.markdown("### Detalle de Datos")
     with col_filt:
-        cuentas_tabla_opts = sorted(filtrado['cuenta'].astype(str).unique().tolist())
-        cuentas_tabla_sel  = st.multiselect(
-            "cuenta_detalle",
-            options=cuentas_tabla_opts,
-            default=[],
-            placeholder="Filtrar por cuenta — global si no seleccionas",
-            key="detalle_cuentas_widget",
-            label_visibility="collapsed",
+        sedes_tabla_opts = sorted(filtrado['sede'].astype(str).unique().tolist())
+        sedes_tabla_sel  = st.multiselect(
+            "sede_detalle", options=sedes_tabla_opts, default=[],
+            placeholder="Filtrar por sede — global si no seleccionas",
+            key="detalle_sedes_widget", label_visibility="collapsed",
         )
 
-    # Base de datos activa: filtros principales + filtro de cuenta
     base_filtrado = (
-        filtrado if not cuentas_tabla_sel
-        else filtrado[filtrado['cuenta'].astype(str).isin(cuentas_tabla_sel)]
+        filtrado if not sedes_tabla_sel
+        else filtrado[filtrado['sede'].astype(str).isin(sedes_tabla_sel)]
     )
-
-    # Financiamiento calculado sobre base_filtrado (responde a ambos filtros)
-    eq_base       = base_filtrado.groupby('cuenta').agg(
-        costo_equipos   =('costo_equipos',   'first'),
-        renting_mensual =('renting_mensual', 'first'),
-    )
-    valor_eq_real  = eq_base['costo_equipos'].sum()
-    valor_eq_com   = valor_eq_real * FACTOR_COMERCIAL
-    rent_real_men  = eq_base['renting_mensual'].sum()
-    rent_ref_men   = rent_real_men * FACTOR_COMERCIAL
-    bia_men        = rent_ref_men - rent_real_men
-
-    pagado_real    = rent_real_men * N_MESES
-    pagado_ref     = rent_ref_men  * N_MESES
-    bia_aportado   = bia_men       * N_MESES
-
-    por_pagar_real = valor_eq_real - pagado_real
-    por_pagar_ref  = valor_eq_com  - pagado_ref
-
-    # ── Banner BIA ──────────────────────────────────────────────────────────
-    st.markdown(f"""
-<div style='background:#101525;border-left:4px solid #2ECC71;padding:14px 18px;
-            border-radius:6px;margin-bottom:18px'>
-  <span style='color:#8C9BB0;font-size:0.85em'>Aporte acumulado de BIA en {N_MESES} meses</span><br>
-  <span style='color:#2ECC71;font-size:1.8em;font-weight:700'>${bia_aportado:,.0f}</span>
-  <span style='color:#8C9BB0;font-size:0.9em'> financiados por BIA en equipos</span>
-</div>
-""", unsafe_allow_html=True)
-
-    # ── Comparativo lado a lado ─────────────────────────────────────────────
-    st.markdown("#### Financiamiento de Equipos")
-
-    def _header(texto, color):
-        st.markdown(
-            f"<div style='color:{color};font-weight:600;font-size:0.9em;"
-            f"padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid rgba(140,155,176,0.2)'>"
-            f"{texto}</div>",
-            unsafe_allow_html=True,
-        )
-
-    def _ahorro_card(label, valor):
-        st.markdown(
-            f"<div style='padding:8px 0 8px 0;border-bottom:1px solid rgba(140,155,176,0.1)'>"
-            f"<div style='color:#8C9BB0;font-size:0.78em'>{label}</div>"
-            f"<div style='color:#2ECC71;font-size:1.15em;font-weight:600'>${valor:,.0f}</div>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
-
-    col_sin, col_con, col_ahorro = st.columns(3)
-
-    with col_sin:
-        _header("Valor total equipos", "#8C9BB0")
-        st.metric("Valor equipos",             f"${valor_eq_com:,.0f}")
-        st.metric("Renting mensual",           f"${rent_ref_men:,.0f}")
-        st.metric(f"Pagado ({N_MESES} meses)", f"${pagado_ref:,.0f}")
-        st.metric("Por pagar",                 f"${por_pagar_ref:,.0f}")
-
-    with col_con:
-        _header("Con BIA", "#09B4CC")
-        st.metric("Valor equipos",             f"${valor_eq_real:,.0f}")
-        st.metric("Renting mensual",           f"${rent_real_men:,.0f}")
-        st.metric(f"Pagado ({N_MESES} meses)", f"${pagado_real:,.0f}")
-        st.metric("Por pagar",                 f"${por_pagar_real:,.0f}")
-
-    with col_ahorro:
-        _header("El cliente ahorra", "#2ECC71")
-        _ahorro_card("En valor de equipos",     valor_eq_com - valor_eq_real)
-        _ahorro_card("En renting mensual",      bia_men)
-        _ahorro_card(f"En {N_MESES} meses",     bia_aportado)
-        _ahorro_card("En saldo por pagar",      por_pagar_ref - por_pagar_real)
-
-    st.markdown("")
 
     tabla = base_filtrado[[
-        'cuenta', 'direccion', 'nivel', 'mes', 'consumo',
-        'tarifa_epm', 'tarifa_bia', 'ahorro_bruto',
-        'costo_equipos', 'renting_mensual',
+        'sede', 'operador', 'nivel', 'mes', 'consumo',
+        'tarifa_op', 'tarifa_bia', 'costo_op', 'costo_bia', 'ahorro',
     ]].copy()
 
-    tabla['valor_comercial']  = tabla['costo_equipos'] * FACTOR_COMERCIAL
-    tabla['renting_ref']      = tabla['renting_mensual'] * FACTOR_COMERCIAL
-    tabla['bia_financia']     = tabla['renting_ref'] - tabla['renting_mensual']
-
-    # costo_equipos = valor real (Con BIA) | valor_comercial = precio full
     tabla.columns = [
-        'Cuenta', 'Dirección', 'Nivel', 'Mes', 'Consumo (kWh)',
-        'Tarifa EPM ($/kWh)', 'Tarifa BIA ($/kWh)', 'Ahorro en Tarifa ($)',
-        'Valor Con BIA ($)', 'Renting Con BIA ($)',
-        'Valor Total Equipos ($)', 'Renting Mensual ($)', 'El Cliente Ahorra ($)',
+        'Sede', 'Operador', 'Nivel', 'Mes', 'Consumo (kWh)',
+        'Tarifa Dist. ($/kWh)', 'Tarifa BIA ($/kWh)',
+        'Costo Distribuidor ($)', 'Costo BIA ($)', 'Ahorro ($)',
     ]
 
-    # Precio full primero, luego Con BIA
-    tabla = tabla[[
-        'Cuenta', 'Dirección', 'Nivel', 'Mes', 'Consumo (kWh)',
-        'Tarifa EPM ($/kWh)', 'Tarifa BIA ($/kWh)', 'Ahorro en Tarifa ($)',
-        'Valor Total Equipos ($)', 'Renting Mensual ($)',
-        'Valor Con BIA ($)', 'Renting Con BIA ($)', 'El Cliente Ahorra ($)',
-    ]]
-
-    tabla['Consumo (kWh)']      = tabla['Consumo (kWh)'].apply(lambda x: f"{x:,.0f}")
-    tabla['Tarifa EPM ($/kWh)'] = tabla['Tarifa EPM ($/kWh)'].apply(lambda x: f"${x:.4f}")
-    tabla['Tarifa BIA ($/kWh)'] = tabla['Tarifa BIA ($/kWh)'].apply(lambda x: f"${x:.4f}")
-    for col in ['Ahorro en Tarifa ($)', 'Valor Total Equipos ($)', 'Renting Mensual ($)',
-                'Valor Con BIA ($)', 'Renting Con BIA ($)', 'El Cliente Ahorra ($)']:
+    tabla['Consumo (kWh)']        = tabla['Consumo (kWh)'].apply(lambda x: f"{x:,.0f}")
+    tabla['Tarifa Dist. ($/kWh)'] = tabla['Tarifa Dist. ($/kWh)'].apply(lambda x: f"${x:,.2f}")
+    tabla['Tarifa BIA ($/kWh)']   = tabla['Tarifa BIA ($/kWh)'].apply(lambda x: f"${x:,.2f}")
+    for col in ['Costo Distribuidor ($)', 'Costo BIA ($)', 'Ahorro ($)']:
         tabla[col] = tabla[col].apply(lambda x: f"${x:,.0f}")
 
     st.dataframe(tabla, use_container_width=True, hide_index=True)
@@ -732,10 +611,10 @@ else:
 # ── Footer ────────────────────────────────────────────────────────────────────
 
 st.markdown("---")
-n_cuentas   = df['cuenta'].nunique()
+n_sedes     = df['sede'].nunique()
 n_registros = len(df)
 st.markdown(f"""
 <div style='text-align:center;color:#8C9BB0;font-size:0.9em'>
-    Dashboard Energético • Oct 2025 – Abr 2026 • {n_cuentas} Sedes • {n_registros} Registros
+    Dashboard Energético • Nov 2025 – Abr 2026 • {n_sedes} Sedes • {n_registros} Registros
 </div>
 """, unsafe_allow_html=True)

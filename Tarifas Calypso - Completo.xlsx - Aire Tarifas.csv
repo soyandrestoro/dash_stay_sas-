@@ -1,0 +1,16 @@
+Mes,Nivel de tension ,Aire Tarifa ,Bia Tarifa
+"noviembre 1, 2025",1 Usuario,"707,01","631,08"
+"diciembre 1, 2025",1 Usuario,"705,98","632,49"
+"enero 1, 2026",1 Usuario,"703,49","616,21"
+"febrero 1, 2026",1 Usuario,"729,92","597,68"
+"marzo 1, 2026",1 Usuario,"737,11","568,75"
+"abril 1, 2026",1 Usuario,"718,82","591,3"
+,,,
+,,,
+Mes,Nivel de tension ,Aire Tarifa ,Bia Tarifa
+"noviembre 1, 2025",1 OR ,"730,86","654,93"
+"diciembre 1, 2025",1 OR ,"729,34","655,85"
+"enero 1, 2026",1 OR ,"726,72","639,44"
+"febrero 1, 2026",1 OR ,"753,03","620,8"
+"marzo 1, 2026",1 OR ,"759,93","591,57"
+"abril 1, 2026",1 OR ,"741,53","614,01"
